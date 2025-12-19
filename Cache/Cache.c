@@ -96,30 +96,27 @@ void acessarCache(Cache *c, unsigned int endereco,
             return;
         }
     }
-
     /* MISS */
     c->miss_total++;
 
+    /* Verifica se é miss compulsório */
     if (!blocoJaAcessado(bloco)) {
         c->miss_compulsorio++;
-    } else {
-        if (cacheTAtemBloco(cacheTA, linhasTA, bloco))
-            c->miss_conflito++;
-        else
-            c->miss_capacidade++;
+        } else {
+    /* Não é compulsório: conflito ou capacidade */
+    if (cacheTAtemBloco(cacheTA, linhasTA, bloco))
+        c->miss_conflito++;
+    else
+        c->miss_capacidade++;
     }
 
-    /* Atualiza cache totalmente associativa */
-    inserirCacheTA(cacheTA, linhasTA, bloco);
-
-    /* Substituição RANDOM */
     int r = rand() % c->assoc;
-    if(c->conjuntos[indice][r].validade = 0)
-    
-
     c->conjuntos[indice][r].validade = 1;
     c->conjuntos[indice][r].tag = tag;
-}
+
+    inserirCacheTA(cacheTA, linhasTA, bloco);
+
+    }
 
 void imprimirResultados(Cache *c, const char *nome) {
     printf("\n===== Cache de %s =====\n", nome);
