@@ -114,6 +114,9 @@ void acessarCache(Cache *c, unsigned int endereco,
 
     /* Substituição RANDOM */
     int r = rand() % c->assoc;
+    if(c->conjuntos[indice][r].validade = 0)
+    
+
     c->conjuntos[indice][r].validade = 1;
     c->conjuntos[indice][r].tag = tag;
 }
