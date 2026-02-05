@@ -16,6 +16,11 @@ typedef NO *PONT;
 
 PONT criaNo() {
     PONT p = (PONT)malloc(sizeof(NO));
+    if (!p) {
+    printf("Erro de memoria\n");
+    exit(1);
+    }
+
     if (p) {
         p->fim = false;
         for (int i = 0; i < N_ALFABETO; i++) {
@@ -30,10 +35,18 @@ PONT inicializa() {
 }
 
 int mapearIndice(char c) {
-    return ((int)c - (int)'a');
+    c = tolower(c);
+    if (c < 'a' || c > 'z') return -1;
+    return c - 'a';
 }
 
+
 void insere(PONT raiz, char *chave) {
+
+    if (!raiz || !chave) {
+        return;
+    }
+
     int nivel;
     int compr = strlen(chave);
     PONT p = raiz;
@@ -65,6 +78,17 @@ bool busca(PONT raiz, char *chave) {
     }
     return p != NULL && p->fim;
 }
+
+void liberarTrie(PONT raiz) {
+
+    if (!raiz) return;
+
+    for (int i = 0; i < N_ALFABETO; i++)
+        liberarTrie(raiz->filhos[i]);
+
+    free(raiz);
+}
+
 
 int main() {
     PONT r = inicializa();
