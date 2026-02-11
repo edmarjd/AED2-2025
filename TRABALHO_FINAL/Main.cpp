@@ -1,45 +1,109 @@
 #include <iostream>
-#include "Lista_de_adjacencia e Dijkstra.hpp" // Inclui o arquivo que criamos acima
-#include "TRIE.hpp" // inclui o arquivo da trie
+#include <string>
+#include <fstream>
+#include <unordered_map>
+#include "json.hpp"
+#include "TRIE.hpp"
+#include "Lista_de_adjacencia e Dijkstra.hpp"
 
-Grafo* carregarArquivo(const std::string& nome) {
-    std::ifstream file(nome);
-    if (!file.is_open()) return nullptr;
+using json = nlohmann::json;
 
-    int n;
-    file >> n;
-    Grafo* g = new Grafo(n);
+// Mapeamento global para traduzir ID -> Nome da Rua no resultado final
+std::unordered_map<long long, std::string> id_para_nome;
 
-    int u, v, w;
-    while (file >> u >> v >> w) {
-        g->adicionarAresta(u, v, w);
+
+long long extrairID(nlohmann::json v) {
+    if (v.is_array() && !v.empty()) return v[0].get<long long>();
+    if (v.is_number()) return v.get<long long>();
+    if (v.is_string()) return std::stoll(v.get<std::string>());
+    return -1;
+}
+
+void carregarDados(Trie& trie, const std::string& arquivo_labels) {
+    std::ifstream f(arquivo_labels);
+    if (!f.is_open()) {
+        std::cerr << "Erro ao abrir: " << arquivo_labels << std::endl;
+        return;
     }
-    file.close();
-    return g;
+
+    json j;
+    try {
+        f >> j;
+        for (auto& [label, id_valor] : j.items()) {
+            // No seu JSON, id_valor é algo como [240003004]
+            if (id_valor.is_array() && !id_valor.empty()) {
+                // Pegamos o primeiro elemento e convertemos para long long
+                long long id = id_valor[0].get<long long>(); 
+                trie.inserir(label, id);
+                id_para_nome[id] = label; 
+            } 
+            // Caso o ID venha como número direto em algum outro arquivo
+            else if (id_valor.is_number()) {
+                long long id = id_valor.get<long long>();
+                trie.inserir(label, id);
+                id_para_nome[id] = label;
+            }
+        }
+    } catch (json::parse_error& e) {
+        std::cerr << "Erro no formato do JSON: " << e.what() << std::endl;
+    }
+    f.close();
 }
 
 int main() {
-    std::string nomeArquivo = "grafo.txt";
-    Grafo* meuGrafo = carregarArquivo(nomeArquivo);
+    Trie trieRuas;
+    
+    std::cout << "Carregando base de dados de Pelotas..." << std::endl;
+    
+    // 1. Carrega os nomes das ruas na Trie
+    carregarDados(trieRuas, "label_to_nodes.json");
 
-    if (meuGrafo == nullptr) {
-        std::cerr << "Erro ao carregar " << nomeArquivo << "\n";
+    // 2. Carrega o Grafo (ajuste o total de nodos conforme sua base)
+    // Dica: use um valor ligeiramente maior que o número de entradas em nodes.json
+    int total_estimado_nodos = 50000; 
+    Grafo* cidade = Grafo::carregarDeJSON("edges.json", total_estimado_nodos);
+
+    if (!cidade) {
+        std::cerr << "Erro ao carregar malha viaria!" << std::endl;
         return 1;
     }
 
-    std::cout << "Estrutura do Grafo:\n";
-    meuGrafo->imprimirLista();
+    std::string nomeOrigem, nomeDestino;
+    
+    // 3. Interface de busca
+    std::cout << "\n--- Navegador GPS Pelotas ---\n";
+    std::cout << "Origem (Intersecao): ";
+    std::getline(std::cin, nomeOrigem);
+    
+    std::cout << "Destino (Intersecao): ";
+    std::getline(std::cin, nomeDestino);
 
-    int inicio = 0;
-    std::vector<int> resultados = meuGrafo->executarDijkstra(inicio);
+    long long idOrigem = trieRuas.buscarID(nomeOrigem);
+    long long idDestino = trieRuas.buscarID(nomeDestino);
 
-    std::cout << "\nResultados Dijkstra (Partindo de " << inicio << "):\n";
-    for (int i = 0; i < resultados.size(); i++) {
-        std::cout << "Ate " << i << ": ";
-        if (resultados[i] == INT_MAX) std::cout << "Infinito\n";
-        else std::cout << resultados[i] << "\n";
+    if (idOrigem != -1 && idDestino != -1) {
+        // 4. Processamento da Rota
+        std::vector<long long> distancias = cidade->executarDijkstra(idOrigem);
+        
+        // No Dijkstra, precisamos saber o índice do destino para ver o resultado
+        int idxDestino = cidade->obterIndice(idDestino);
+
+        if (idxDestino == -1) {
+            std::cout << "Destino nao existe no grafo\n";
+            return 0;
+        }
+
+
+        if (distancias[idxDestino] == INT_MAX) {
+            std::cout << "\nNao existe caminho entre esses locais." << std::endl;
+        } else {
+            std::cout << "\nRota encontrada!" << std::endl;
+            std::cout << "Distancia total: " << distancias[idxDestino] << " metros." << std::endl;
+        }
+    } else {
+        std::cout << "\nErro: Uma ou ambas as ruas nao foram encontradas na base." << std::endl;
     }
 
-    delete meuGrafo; // Limpeza final
+    delete cidade;
     return 0;
 }

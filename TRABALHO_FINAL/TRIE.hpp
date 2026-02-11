@@ -1,25 +1,25 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cctype>
 
 class NoTrie {
 public:
-    NoTrie* filhos[26];
-    bool fim;
+    NoTrie* filhos[256]; // Suporta ASCII estendido (acentos e símbolos)
+    long long id_nodo;    // ID do OSMNX (ex: 240003004)
+    bool ehFim;
 
-    // construtor da trie
     NoTrie() {
-        fim = false;
-        for (int i = 0; i < 26; i++) {
+        ehFim = false;
+        id_nodo = -1; // -1 indica que não há ID vinculado a este nó
+        for (int i = 0; i < 256; i++) {
             filhos[i] = nullptr;
         }
     }
 
-    // Destrutor recursivo para liberar memória dos filhos
+    // Destrutor recursivo para liberar memória automaticamente
     ~NoTrie() {
-        for (int i = 0; i < 26; i++) {
-            delete filhos[i];
+        for (int i = 0; i < 256; i++) {
+            if (filhos[i]) delete filhos[i];
         }
     }
 };
@@ -28,67 +28,61 @@ class Trie {
 private:
     NoTrie* raiz;
 
-    // Converte caractere para índice (0-25)
-    int obterIndice(char c) {
-        return tolower(c) - 'a';
-    }
-
 public:
     Trie() {
         raiz = new NoTrie();
     }
 
     ~Trie() {
-        delete raiz; // Libera toda a estrutura recursivamente
+        delete raiz; // Aciona o destrutor recursivo do NoTrie
     }
 
-    // Insere uma palavra na trie
-    void inserir(std::string palavra) {
+    // Insere uma rua e vincula ao seu ID do mapa
+    void inserir(std::string rua, long long id) {
         NoTrie* atual = raiz;
 
-        for (char c : palavra) {
-            int indice = obterIndice(c);
+        for (char c : rua) {
+            // Usamos unsigned char para tratar caracteres acentuados corretamente
+            unsigned char indice = (unsigned char)c;
 
             if (atual->filhos[indice] == nullptr) {
                 atual->filhos[indice] = new NoTrie();
             }
-
             atual = atual->filhos[indice];
         }
 
-        atual->fim = true;
+        atual->ehFim = true;
+        atual->id_nodo = id; // Guarda o ID no final da palavra
     }
 
-    // Verifica se a palavra existe na trie
-    bool buscar(std::string palavra) {
+    // Busca o ID de uma rua. Retorna -1 se não encontrar.
+    long long buscarID(std::string rua) {
         NoTrie* atual = raiz;
 
-        for (char c : palavra) {
-            int indice = obterIndice(c);
+        for (char c : rua) {
+            unsigned char indice = (unsigned char)c;
 
             if (atual->filhos[indice] == nullptr)
-                return false;
+                return -1;
 
             atual = atual->filhos[indice];
         }
 
-        return atual->fim;
+        return (atual->ehFim) ? atual->id_nodo : -1;
     }
 
-    // Verifica se existe alguma palavra com o prefixo informado
+    // Verifica se existe algum nome de rua que começa com o prefixo
     bool comecaCom(std::string prefixo) {
         NoTrie* atual = raiz;
 
         for (char c : prefixo) {
-            int indice = obterIndice(c);
+            unsigned char indice = (unsigned char)c;
 
             if (atual->filhos[indice] == nullptr) {
                 return false;
             }
-
             atual = atual->filhos[indice];
         }
-
         return true;
     }
 };
