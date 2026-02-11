@@ -1,0 +1,66 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(NavegadorGPSPelotas LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Qt modules
+find_package(Qt6 REQUIRED COMPONENTS Widgets Quick QuickWidgets Location Positioning)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+# Sources
+set(SOURCES
+    main.cpp
+    gui/MainWindow.cpp
+)
+
+set(HEADERS
+    gui/MainWindow.h
+    core/Grafo.hpp
+    core/Dijkstra.hpp
+    core/Trie.hpp
+    core/JsonLoader.hpp
+)
+
+set(UI_FILES
+    gui/MainWindow.ui
+)
+
+set(QML_FILES
+    qml/MapView.qml
+)
+
+qt_add_executable(NavegadorGPSPelotas
+    ${SOURCES}
+    ${HEADERS}
+    ${UI_FILES}
+    ${QML_FILES}
+)
+
+# Link Qt libraries
+target_link_libraries(NavegadorGPSPelotas PRIVATE
+    Qt6::Widgets
+    Qt6::Quick
+    Qt6::QuickWidgets
+    Qt6::Location
+    Qt6::Positioning
+)
+
+# Include paths
+target_include_directories(NavegadorGPSPelotas PRIVATE
+    core
+    gui
+)
+
+# Copy data files after build
+file(GLOB DATA_FILES "${CMAKE_SOURCE_DIR}/data/*")
+foreach(file ${DATA_FILES})
+    add_custom_command(TARGET NavegadorGPSPelotas POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${file}
+        $<TARGET_FILE_DIR:NavegadorGPSPelotas>)
+endforeach()

@@ -85,4 +85,40 @@ public:
         }
         return true;
     }
+
+    void coletarSugestoes(NoTrie* no, std::string atual,
+                      std::vector<std::string>& resultado) {
+
+    if (no->ehFim)
+        resultado.push_back(atual);
+
+    for (int i = 0; i < 256; i++) {
+        if (no->filhos[i]) {
+            coletarSugestoes(no->filhos[i],
+                             atual + (char)i,
+                             resultado);
+        }
+    }
+
+    }
+
+    std::vector<std::string> sugerir(std::string prefixo) {
+    NoTrie* atual = raiz;
+
+    for (char c : prefixo) {
+        unsigned char indice = (unsigned char)c;
+
+        if (!atual->filhos[indice])
+            return {};
+
+        atual = atual->filhos[indice];
+    }
+
+    std::vector<std::string> resultado;
+    coletarSugestoes(atual, prefixo, resultado);
+
+    return resultado;
+    }
+
+
 };
