@@ -52,66 +52,67 @@ void carregarDados(Trie& trie, const std::string& arquivo_labels) {
 
 int main() {
     Trie trieRuas;
-    
+    Grafo cidade;
+
     std::cout << "Carregando base de dados de Pelotas..." << std::endl;
-    
-    // 1. Carrega os nomes das ruas na Trie
+
+    // 1. Trie
     carregarDados(trieRuas, "label_to_nodes.json");
 
-    // 2. Carrega o Grafo (ajuste o total de nodos conforme sua base)
-    // Dica: use um valor ligeiramente maior que o número de entradas em nodes.json
-    int total_estimado_nodos = 50000; 
-    Grafo* cidade = Grafo::carregarDeJSON("edges.json", total_estimado_nodos);
-    std::cout << "Total vertices: " << cidade->totalArestas() << std::endl;
+    // 2. Grafo
+    cidade.carregarNos("nodes.json");
+    cidade.carregarArestas("edges.json");
 
-
-
-    for (auto& par : id_para_nome) {
-        cidade->adicionarNo(par.first);
-    }
-
-
-    if (!cidade) {
-        std::cerr << "Erro ao carregar malha viaria!" << std::endl;
-        return 1;
-    }
+    std::cout << "Grafo carregado com sucesso." << std::endl;
 
     std::string nomeOrigem, nomeDestino;
-    
-    // 3. Interface de busca
+
+    // 3. Interface
     std::cout << "\n--- Navegador GPS Pelotas ---\n";
-    std::cout << "Origem (Intersecao): ";
+    std::cout << "Origem (nome da rua): ";
     std::getline(std::cin, nomeOrigem);
-    
-    std::cout << "Destino (Intersecao): ";
+
+    std::cout << "Destino (nome da rua): ";
     std::getline(std::cin, nomeDestino);
 
-    long long idOrigem = trieRuas.buscarID(nomeOrigem);
-    long long idDestino = trieRuas.buscarID(nomeDestino);
+    auto idsOrigem = trieRuas.buscarID(nomeOrigem);
+    auto idsDestino = trieRuas.buscarID(nomeDestino);
 
-    if (idOrigem != -1 && idDestino != -1) {
-        // 4. Processamento da Rota
-        ResultadoDijkstra resultado = cidade->executarDijkstra(idOrigem);
-        
-        // No Dijkstra, precisamos saber o índice do destino para ver o resultado
-        int idxDestino = cidade->obterIndice(idDestino);
-
-        if (idxDestino == -1) {
-            std::cout << "Destino nao existe no grafo\n";
-            return 0;
-        }
-
-
-        if (resultado.dist[idxDestino] == LLONG_MAX) {
-        std::cout << "\nNao existe caminho entre esses locais." << std::endl;
-        } else {
-        std::cout << "\nRota encontrada!" << std::endl;
-        std::cout << "Distancia total: " << resultado.dist[idxDestino] << " metros." << std::endl;
-        }
-    } else {
+    if (idsOrigem.empty() || idsDestino.empty()) {
         std::cout << "\nErro: Uma ou ambas as ruas nao foram encontradas na base." << std::endl;
+        return 0;
     }
 
-    delete cidade;
+    long long idOrigem = idsOrigem[0];
+    long long idDestino = idsDestino[0];
+
+    // 4. Dijkstra
+    resultadoDijkstra resultado = cidade.executarDijkstra(idOrigem);
+
+    int idxDestino = cidade.buscarIndice(idDestino); // função que NÃO cria nó
+
+    if (idxDestino == -1) {
+        std::cout << "Destino nao existe no grafo\n";
+        return 0;
+    }
+
+    if (resultado.dist[idxDestino] == LLONG_MAX) {
+        std::cout << "\nNao existe caminho entre esses locais." << std::endl;
+    } else {
+        std::cout << "\nRota encontrada!" << std::endl;
+        std::cout << "Distancia total: " << resultado.dist[idxDestino] << " metros." << std::endl;
+
+        auto caminho = cidade.reconstruirCaminhoIDs(idOrigem, idDestino, resultado.pai);
+
+        std::cout << "\nCaminho:\n";
+        for (auto id : caminho) {
+            if (id_para_nome.count(id))
+                std::cout << id_para_nome[id] << " -> ";
+            else
+                std::cout << id << " -> ";
+        }
+        std::cout << "FIM\n";
+    }
+
     return 0;
 }
